@@ -1,6 +1,7 @@
 """
 Activation patching utilities for mechanistic interpretability.
 Implements causal tracing to identify refusal circuits in Llama-3.
+Uses logit-based metrics for more precise measurement.
 """
 
 import torch
@@ -12,6 +13,19 @@ from collections import defaultdict
 import json
 from pathlib import Path
 from tqdm import tqdm
+
+# Import logit-based metrics
+from metrics import (
+    compute_logit_diff,
+    compute_logit_diff_distribution,
+    compute_kl_divergence,
+    compute_js_divergence,
+    get_token_ids,
+    analyze_first_token_distribution,
+    is_refusal_by_logits,
+    REFUSAL_TOKENS,
+    COMPLIANCE_TOKENS
+)
 
 
 @dataclass
@@ -161,6 +175,53 @@ def remove_hooks(hooks: List):
         hook.remove()
 
 
+def run_with_cache_logits_only(
+    model: nn.Module,
+    tokenizer,
+    prompt: str,
+) -> Tuple[torch.Tensor, ActivationCache]:
+    """
+    Run model WITHOUT generation - just get logits for next token.
+    Much faster and more precise for patching experiments.
+    
+    Args:
+        model: The language model
+        tokenizer: The tokenizer
+        prompt: Input prompt
+    
+    Returns:
+        Tuple of (logits, activation_cache)
+        logits shape: [batch, seq_len, vocab_size]
+    """
+    cache = ActivationCache()
+    hooks = register_hooks(model, cache)
+    
+    try:
+        # Format prompt
+        messages = [{"role": "user", "content": prompt}]
+        if hasattr(tokenizer, 'apply_chat_template'):
+            formatted_prompt = tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+        else:
+            formatted_prompt = prompt
+        
+        # Tokenize
+        inputs = tokenizer(formatted_prompt, return_tensors="pt")
+        device = next(model.parameters()).device
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+        
+        # Single forward pass (no generation)
+        with torch.no_grad():
+            outputs = model(**inputs)
+            logits = outputs.logits  # [batch, seq_len, vocab_size]
+        
+    finally:
+        remove_hooks(hooks)
+    
+    return logits, cache
+
+
 def run_with_cache(
     model: nn.Module,
     tokenizer,
@@ -169,7 +230,7 @@ def run_with_cache(
     temperature: float = 0.7
 ) -> Tuple[str, ActivationCache, torch.Tensor]:
     """
-    Run model and cache all activations.
+    Run model and cache all activations (with generation).
     
     Args:
         model: The language model
