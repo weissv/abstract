@@ -4,8 +4,8 @@
 model:
   name: "meta-llama/Meta-Llama-3-8B-Instruct"
   hf_token: "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"
-  quantization: "fp16"  # Options: "4bit", "8bit", "fp16", "fp32"
-  device: "mps"  # Options: "mps", "cuda", "cpu"
+  quantization: "4bit"  # Options: "4bit", "8bit", "fp16", "fp32"
+  device: "cuda"  # Options: "mps", "cuda", "cpu"
   max_length: 512
   trust_remote_code: true
 
