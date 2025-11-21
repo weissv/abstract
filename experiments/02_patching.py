@@ -18,11 +18,10 @@ from advanced_patching import (
     analyze_patching_results_advanced,
     compare_ransomware_vs_malware
 )
-from visualization import (
-    plot_patching_results,
-    plot_layer_importance,
-    create_circuit_diagram,
-    create_dashboard_summary
+from colab_visualization import (
+    create_comprehensive_dashboard,
+    display_in_colab,
+    create_summary_table
 )
 
 
@@ -255,21 +254,36 @@ def run_patching_experiment(config_path: str = "config.yaml"):
             print(f"     Layer {ld['layer']:2d}: L2 distance = {ld['l2_distance']:.4f}")
     
     # Visualization
-    print("\n[6/6] Generating visualizations...")
+    print("\n[6/6] Generating comprehensive visualizations...")
     try:
-        # Use first pair for visualization
-        if len(all_results) > 0:
-            analysis_sample = combined_analysis['per_pair_analysis'][0]['analysis']
+        # Create comprehensive dashboard with all visualizations
+        figures = create_comprehensive_dashboard(
+            all_results=all_results,
+            analysis=combined_analysis,
+            bypass_analysis=bypass_analysis,
+            save_dir="outputs/figures"
+        )
+        
+        # Display in Colab if available
+        try:
+            display_in_colab(figures)
+        except:
+            print("✓ Figures saved to files (not in Colab environment)")
+        
+        # Create summary table
+        if 'top_30_components' in combined_results:
+            summary_df = create_summary_table(combined_results)
+            print("\n📋 TOP 20 COMPONENTS SUMMARY TABLE:")
+            print(summary_df.to_string(index=False))
             
-            # Create dashboard
-            create_dashboard_summary(
-                results=all_results[0],
-                analysis=analysis_sample,
-                save_path="outputs/figures/patching_dashboard.html"
-            )
-            print("✓ Dashboard created: outputs/figures/patching_dashboard.html")
+            # Save to CSV
+            summary_df.to_csv("outputs/results/02_top_components_summary.csv", index=False)
+            print("\n✓ Summary table saved to outputs/results/02_top_components_summary.csv")
+        
     except Exception as e:
         print(f"⚠️ Visualization failed: {e}")
+        import traceback
+        traceback.print_exc()
     
     print("\n" + "="*80)
     print("✅ EXPERIMENT 2 COMPLETE")
@@ -277,73 +291,19 @@ def run_patching_experiment(config_path: str = "config.yaml"):
     print(f"\nResults saved to:")
     print(f"  - outputs/results/02_patching_combined.json")
     print(f"  - outputs/results/02_patching_pair_*.json")
+    print(f"  - outputs/results/02_top_components_summary.csv")
     if bypass_analysis:
         print(f"  - outputs/results/02_ransomware_bypass_analysis.json")
-    print(f"  - outputs/figures/patching_dashboard.html")
+    print(f"\nVisualizations saved to outputs/figures/:")
+    print(f"  - 01_causal_heatmap.html")
+    print(f"  - 02_layer_importance.html")
+    print(f"  - 03_top_components.html")
+    print(f"  - 04_refusal_cascade.html")
+    print(f"  - 05_logit_stats.html")
+    if bypass_analysis:
+        print(f"  - 06_ransomware_bypass.html")
     
-    return combined_results
-    for layer, count in sorted(layer_importance.items(), key=lambda x: x[1], reverse=True)[:10]:
-        print(f"  Layer {layer}: {count} causal components")
-    
-    # Generate visualizations
-    print("\n[5/5] Generating visualizations...")
-    
-    output_dir = Path(config['paths']['figures_dir'])
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Plot for first pair (most representative)
-    if all_results:
-        fig1 = plot_patching_results(
-            all_results[0],
-            save_path=str(output_dir / "patching_heatmap.html")
-        )
-        print(f"✓ Saved patching heatmap")
-        
-        fig2 = plot_layer_importance(
-            layer_importance,
-            save_path=str(output_dir / "layer_importance.html")
-        )
-        print(f"✓ Saved layer importance plot")
-        
-        fig3 = create_circuit_diagram(
-            ranked_components[:15],
-            save_path=str(output_dir / "circuit_diagram.html")
-        )
-        print(f"✓ Saved circuit diagram")
-        
-        # Create dashboard
-        analysis_sample = analyze_patching_results(all_results[0])
-        dashboard_path = create_dashboard_summary(
-            all_results[0],
-            analysis_sample,
-            output_dir=str(output_dir)
-        )
-        print(f"✓ Created interactive dashboard: {dashboard_path}")
-    
-    # Save results
-    results_dir = Path(config['paths']['results_dir'])
-    results_dir.mkdir(parents=True, exist_ok=True)
-    
-    results_path = results_dir / "02_patching_results.json"
-    with open(results_path, 'w') as f:
-        json.dump({
-            'all_experiments': [
-                {
-                    'category': r['category'],
-                    'pair_id': r['pair_id'],
-                    'harmful_prompt': r['harmful_prompt'],
-                    'harmless_prompt': r['harmless_prompt'],
-                    'num_experiments': len(r['experiments'])
-                }
-                for r in all_results
-            ],
-            'combined_analysis': combined_analysis
-        }, f, indent=2)
-    
-    print(f"\n✓ Results saved to: {results_path}")
-    print_memory_stats("\nFinal memory: ")
-    
-    return all_results, combined_analysis
+    return combined_results, combined_analysis
 
 
 if __name__ == '__main__':

@@ -5,6 +5,7 @@ Performs comprehensive layer and attention head scanning.
 
 import torch
 import torch.nn as nn
+import numpy as np
 from typing import Dict, List, Tuple, Optional, Any
 from pathlib import Path
 import json
