@@ -111,13 +111,18 @@ def get_hf_token() -> str:
     print("2. Add a new secret named 'HF_TOKEN'")
     print("3. Paste your token and enable 'Notebook access'")
     print("="*60)
-    token = input("Enter your HuggingFace token: ").strip()
-    
-    if not token:
-        raise ValueError("HuggingFace token is required to access Llama-3.1 models")
-    
-    return token
 
+    if hf_token is None:
+        hf_token = get_hf_token()
+    
+    # Login to HuggingFace
+    from huggingface_hub import login
+    try:
+        login(token=hf_token)
+        print("✓ Logged in to HuggingFace")
+    except Exception as e:
+        print(f"⚠️ Login warning: {e}")
+        print("Attempting to proceed without explicit login...")
 
 def load_model_and_tokenizer(
     model_id: str = "meta-llama/Meta-Llama-3.1-8B-Instruct",
@@ -150,17 +155,7 @@ def load_model_and_tokenizer(
     print_memory_stats("Before loading: ")
     
     # Get HuggingFace token
-    if hf_token is None:
-        hf_token = get_hf_token()
-    
-    # Login to HuggingFace
-    from huggingface_hub import login
-    try:
-        login(token=hf_token)
-        print("✓ Logged in to HuggingFace")
-    except Exception as e:
-        print(f"⚠️ Login warning: {e}")
-        print("Attempting to proceed without explicit login...")
+
     
     # Configure quantization
     # Configure quantization for T4 GPU
