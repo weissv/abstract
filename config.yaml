@@ -1,17 +1,18 @@
-# Configuration for Llama-3 Refusal Mechanism Research
+# Configuration for Llama-3.1 Refusal Mechanism Research
+# Optimized for Google Colab with T4 GPU
 
 # Model Configuration
 model:
-  name: "meta-llama/Meta-Llama-3-8B-Instruct"
-  hf_token: "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"
+  name: "meta-llama/Meta-Llama-3.1-8B-Instruct"
+  # hf_token will be requested at runtime via input()
   quantization: "4bit"  # Options: "4bit", "8bit", "fp16", "fp32"
-  device: "cuda"  # Options: "mps", "cuda", "cpu"
+  device: "cuda"  # Options: "cuda", "cpu" (use cuda for T4 GPU)
   max_length: 512
   trust_remote_code: true
 
-# Quantization Settings
+# Quantization Settings (optimized for T4 GPU with 15GB VRAM)
 quantization:
-  load_in_4bit: false
+  load_in_4bit: true
   bnb_4bit_compute_dtype: "float16"
   bnb_4bit_quant_type: "nf4"
   bnb_4bit_use_double_quant: true

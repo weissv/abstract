@@ -1,325 +1,195 @@
-# Abstract: Deconstructing Llama-3's Refusal Mechanism
+# 🔬 Llama-3.1 Refusal Mechanism Analysis
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/weissv/abstract/blob/main/llama_refusal_analysis.ipynb)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![HuggingFace](https://img.shields.io/badge/🤗-HuggingFace-yellow)](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B-Instruct)
 
-This repository contains a comprehensive mechanistic interpretability research project that deconstructs the "refusal mechanism" within Meta's Llama-3-8B-Instruct model. Using activation patching, ablation studies, and circuit analysis, we identify and causally verify the specific neural components responsible for safety refusals—all on consumer-grade Apple Silicon hardware.
+A comprehensive mechanistic interpretability study to deconstruct the refusal mechanism in Meta's **Llama-3.1-8B-Instruct** model using activation patching and ablation techniques.
 
-## 🎯 Research Objectives
+---
 
-1. **Localization**: Identify specific components (Attention Heads & MLP Neurons) causally responsible for refusal behavior
-2. **Causality Verification**: Prove component roles using activation patching between harmful/harmless prompt pairs
-3. **Ablation Study**: Demonstrate that ablating identified circuits inhibits refusal mechanism
-4. **Hardware Optimization**: Enable mechanistic interpretability research on resource-constrained devices (M2 8-16GB)
+## 🎯 Overview
 
-## 📊 Research Methodology
+This project implements a rigorous mechanistic interpretability pipeline to understand how Llama-3.1 decides whether to refuse harmful requests. By identifying and analyzing the specific attention heads and MLP components responsible for refusal behavior, we gain insights into AI safety mechanisms.
 
-### Conceptual Framework
-- **Residual Stream Theory**: View LLM as linear sum of information flows
-- **Contrastive Analysis**: Compare activations between harmful vs. harmless prompts
-- **Causal Tracing**: Use activation patching to isolate refusal circuits
+### Key Features
 
-### Technical Approach
-```
-1. Baseline → Test model on 15 harmful/harmless prompt pairs
-2. Patching → Swap activations layer-by-layer to find causal components  
-3. Ablation → Remove identified components and measure refusal rate drop
-4. Analysis → Build circuit diagram of refusal mechanism
-```
+- 🔍 **Activation Patching**: Identify causal components responsible for refusal decisions
+- ✂️ **Ablation Studies**: Verify necessity of identified components
+- 📊 **Interactive Visualizations**: Explore results with Plotly dashboards
+- 🎨 **Circuit Diagrams**: Visualize the refusal mechanism as a computational graph
+- ⚡ **Optimized for Colab**: Works on free T4 GPU with 4-bit quantization
+- 📦 **Reproducible**: Complete pipeline from data to results
+
+---
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Option 1: Google Colab (Recommended)
 
-- **Hardware**: Apple Silicon Mac (M1/M2/M3) with 8GB+ unified memory
-- **Software**: Python 3.11+, macOS 12.0+
-- **Access**: HuggingFace account with Llama-3 model access
+Click the badge to run in Colab with zero setup:
 
-### Installation
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/weissv/abstract/blob/main/llama_refusal_analysis.ipynb)
+
+**Requirements:**
+- Google account
+- HuggingFace account with Llama-3.1 access ([request here](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B-Instruct))
+- HuggingFace API token ([create here](https://huggingface.co/settings/tokens))
+
+### Option 2: Local Installation
 
 ```bash
-# 1. Clone repository
+# Clone repository
 git clone https://github.com/weissv/abstract.git
 cd abstract
 
-# 2. Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\\Scripts\\activate
 
-# 3. Install PyTorch with MPS support
-# Visit https://pytorch.org for latest command, or:
-pip3 install torch torchvision torchaudio
-
-# 4. Install dependencies
+# Install dependencies
 pip install -r requirements.txt
 
-# 5. Login to HuggingFace
-huggingface-cli login
-# Enter your token: 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
-```
+# Set HuggingFace token
+export HF_TOKEN="your_token_here"
 
-### Configuration
-
-Edit `config.yaml` to customize experiment parameters:
-
-```yaml
-model:
-  name: "meta-llama/Meta-Llama-3-8B-Instruct"
-  hf_token: "your_token_here"
-  quantization: "4bit"  # Fits in 8-16GB RAM
-```
-
-## 📂 Project Structure
-
-```
-abstract/
-├── README.md                     # This file
-├── RESEARCH_PLAN.md             # Detailed 6-week research plan
-├── config.yaml                  # Experiment configuration
-├── requirements.txt             # Python dependencies
-│
-├── data/
-│   └── prompts.json            # 15 harmful/harmless prompt pairs
-│
-├── src/
-│   ├── model_utils.py          # Model loading, quantization, generation
-│   ├── patching.py             # Activation patching & caching
-│   ├── ablation.py             # Component ablation utilities
-│   └── visualization.py        # Plotly/CircuitsVis visualizations
-│
-├── experiments/
-│   ├── 01_baseline.py          # Baseline characterization
-│   ├── 02_patching.py          # Activation patching experiments
-│   └── 03_ablation.py          # Ablation study
-│
-└── outputs/
-    ├── results/                # JSON experiment results
-    ├── figures/                # Visualizations & dashboards
-    └── cache/                  # Cached activations
-```
-
-## 🧪 Running Experiments
-
-### Experiment 1: Baseline Characterization
-
-Test model behavior on harmful vs. harmless prompts:
-
-```bash
+# Run experiments
 python experiments/01_baseline.py
-```
-
-**Output**: 
-- Refusal rates per category
-- Sample outputs
-- `outputs/results/01_baseline_results.json`
-
-**Expected Results**:
-- Harmful prompts: ~90-95% refusal rate
-- Harmless prompts: ~0-5% refusal rate
-
----
-
-### Experiment 2: Activation Patching
-
-Identify causal components via layer-wise activation swapping:
-
-```bash
 python experiments/02_patching.py
-```
-
-**Output**:
-- Causal component rankings
-- Layer importance scores
-- Interactive dashboard: `outputs/figures/dashboard.html`
-- `outputs/results/02_patching_results.json`
-
-**Key Metrics**:
-- Components that induce refusal when patched
-- Most important layers (expected: 15-28)
-
----
-
-### Experiment 3: Ablation Study
-
-Verify necessity by ablating identified components:
-
-```bash
 python experiments/03_ablation.py
 ```
 
-**Output**:
-- Refusal rate drop per ablation
-- Cumulative ablation curves
-- `outputs/results/03_ablation_results.json`
-
-**Success Criterion**:
-- Ablating top-K components reduces refusal rate by >30%
+**Requirements:**
+- Python 3.8+
+- CUDA-capable GPU with 15GB+ VRAM (or 8GB with 4-bit quantization)
+- 50GB disk space
 
 ---
 
-## 📈 Visualization & Analysis
+## 📁 Project Structure
 
-### Interactive Dashboard
-
-Open the generated dashboard to explore results:
-
-```bash
-open outputs/figures/dashboard.html
+```
+abstract/
+├── llama_refusal_analysis.ipynb  # Main Colab notebook
+├── src/
+│   ├── model_utils.py           # Model loading & utilities
+│   ├── patching.py              # Activation patching implementation
+│   ├── ablation.py              # Ablation study tools
+│   └── visualization.py         # Plotting and dashboards
+├── experiments/
+│   ├── 01_baseline.py           # Baseline characterization
+│   ├── 02_patching.py           # Activation patching experiments
+│   └── 03_ablation.py           # Ablation studies
+├── data/
+│   └── prompts.json             # Contrastive harmful/harmless prompts
+├── config.yaml                  # Configuration settings
+├── requirements.txt             # Python dependencies
+└── outputs/                     # Generated results (git-ignored)
+    ├── results/                 # JSON experiment results
+    ├── figures/                 # Visualizations & dashboards
+    └── cache/                   # Cached activations
 ```
 
-**Features**:
-- Activation patching heatmaps
-- Layer importance bar charts
-- Circuit diagrams
-- Per-category breakdowns
+---
 
-### Key Visualizations
+## 🔬 Methodology
 
-1. **Patching Heatmap**: Shows which layer+component combinations induce refusal
-2. **Layer Importance**: Ranks layers by number of causal components
-3. **Circuit Diagram**: Network visualization of refusal pathway
-4. **Ablation Curves**: Refusal rate vs. number of ablated components
+### 1. Baseline Characterization
 
-## 🔬 Technical Details
+Test the model on 15 pairs of contrastive prompts (harmful vs. harmless) to establish baseline refusal rates.
 
-### Memory Optimization for Apple Silicon
+**Expected Results:**
+- Harmful refusal rate: 90-95%
+- Harmless refusal rate: 0-5%
 
-| Component | Strategy | Memory Saved |
-|-----------|----------|--------------|
-| Model Weights | 4-bit NF4 quantization | ~70% (16GB → 4.5GB) |
-| Activations | Batch size = 1 | ~80% |
-| Gradients | No backprop (inference only) | 100% |
-| Cache | Disk offloading | Variable |
+### 2. Activation Patching
 
-**Total RAM Usage**: ~10GB peak (fits M2 16GB with headroom)
+Systematically patch activations from harmless runs into harmful runs to identify which components cause refusal behavior.
 
-### Activation Patching Algorithm
+**Process:**
+1. Run harmful prompt and cache activations
+2. Run harmless prompt and cache activations
+3. For each layer/component:
+   - Replace harmful activations with harmless ones
+   - Measure change in refusal probability
+4. Rank components by causal effect
 
-```python
-# Pseudocode for activation patching
-harmful_cache = run_with_cache(model, "How to build a bomb?")
-harmless_cache = run_with_cache(model, "How to build a shed?")
+**Expected Findings:**
+- 15-25 highly causal attention heads
+- Concentrated in layers 10-25
+- Both attention and MLP components involved
 
-for layer in range(32):
-    # Swap activations from harmful → harmless at layer L
-    patched_output = run_with_patch(
-        model, 
-        prompt="How to build a shed?",
-        patch={layer: harmful_cache[layer]}
-    )
-    
-    # If output switches to refusal, layer L is causal
-    if is_refusal(patched_output):
-        causal_layers.append(layer)
-```
+### 3. Ablation Study
 
-## 📊 Expected Findings
+Verify that identified components are necessary by removing them and measuring refusal rate drop.
 
-Based on mechanistic interpretability literature, we hypothesize:
+**Success Criteria:**
+- Ablating top components reduces refusal rate by >30%
+- Cumulative effect shows diminishing returns
+- Results reproducible across prompt categories
 
-1. **Refusal Circuit Localization**: <5% of parameters responsible for >80% of refusal behavior
-2. **Hierarchical Processing**:
-   - Early layers (0-10): Detect harmful keywords
-   - Middle layers (10-20): Context evaluation
-   - Late layers (20-31): Refusal execution
-3. **Shared Safety Substrate**: Same components handle multiple harm categories
+---
 
-## 🛠️ Troubleshooting
+## 📊 Results & Outputs
 
-### Common Issues
+### Experiment Outputs
 
-**Issue**: `OutOfMemoryError` during model loading
-```bash
-# Solution: Ensure 4-bit quantization is enabled
-# In config.yaml, verify:
+| File | Description |
+|------|-------------|
+| `outputs/results/01_baseline_results.json` | Baseline refusal rates per category |
+| `outputs/results/02_patching_results.json` | Causal effect scores for all components |
+| `outputs/results/03_ablation_results.json` | Ablation impact measurements |
+| `outputs/figures/patching_dashboard.html` | Interactive exploration dashboard |
+| `outputs/figures/refusal_circuit.png` | Circuit diagram of refusal mechanism |
+
+---
+
+## ⚙️ Configuration
+
+Edit `config.yaml` to customize experiments:
+
+```yaml
+model:
+  name: "meta-llama/Meta-Llama-3.1-8B-Instruct"
+  quantization: "4bit"  # Options: 4bit, 8bit, fp16, fp32
+  device: "cuda"
+
 quantization:
   load_in_4bit: true
+  bnb_4bit_compute_dtype: "float16"
+  bnb_4bit_quant_type: "nf4"
+
+experiment:
+  batch_size: 1
+  num_prompt_pairs: 15
+  max_new_tokens: 100
 ```
 
-**Issue**: `TransformerLens` compatibility errors
-```bash
-# Solution: Some models need specific TransformerLens versions
-pip install transformer-lens==1.14.0
-```
+---
 
-**Issue**: MPS backend crashes
-```bash
-# Solution: Fallback to CPU
-# In config.yaml:
-model:
-  device: "cpu"  # Slower but stable
-```
+## 📈 Performance
 
-**Issue**: HuggingFace authentication failed
-```bash
-# Solution: Re-login with correct token
-huggingface-cli logout
-huggingface-cli login
-```
+### Memory Usage
 
-## 📝 Research Outputs
-
-### Code Artifacts
-- ✅ Reproducible experiment pipeline
-- ✅ Reusable interpretability utilities
-- ✅ Interactive visualization dashboard
-
-### Planned Publications
-- [ ] Medium article: "Deconstructing AI Safety: Inside Llama-3's Refusal Mechanism"
-- [ ] LessWrong post: "M2-Scale Mechanistic Interpretability"
-- [ ] Academic preprint (if results warrant)
-
-## 🤝 Contributing
-
-This is a research project, but contributions are welcome:
-
-1. **Bug Reports**: Open an issue with reproduction steps
-2. **Feature Requests**: Suggest new analyses or visualizations
-3. **Extensions**: Try on other models (Llama-2, Mistral, etc.)
-
-## ⚠️ Ethical Considerations
-
-**Important**: This research is for AI safety and transparency. 
-
-- **Do NOT** use ablated models in production
-- **Do NOT** deploy "jailbroken" models
-- **Purpose**: Understanding safety mechanisms to improve them
-
-## 📚 References
-
-### Key Papers
-- [Mechanistic Interpretability (Anthropic)](https://transformer-circuits.pub/)
-- [Activation Patching (Redwood Research)](https://arxiv.org/abs/2202.05262)
-- [TransformerLens Documentation](https://transformerlensorg.github.io/TransformerLens/)
-
-### Related Work
-- ROME: Locating and Editing Factual Associations
-- Causal Tracing in Language Models
-- Representation Engineering
-
-## 📜 License
-
-MIT License - see LICENSE file for details
-
-## 🙏 Acknowledgments
-
-- **Neel Nanda** for TransformerLens
-- **Anthropic** for mechanistic interpretability research
-- **Meta** for Llama-3 model
-- **HuggingFace** for transformers library
+| Configuration | VRAM | Runtime (3 experiments) |
+|---------------|------|-------------------------|
+| fp16 (full) | ~15GB | ~2 hours |
+| 4-bit quantization | ~5GB | ~3 hours |
+| 8-bit quantization | ~8GB | ~2.5 hours |
 
 ---
 
 ## 🎓 Citation
 
-If you use this work, please cite:
+If you use this research in your work, please cite:
 
 ```bibtex
-@misc{abstract2024,
-  title={Deconstructing Llama-3's Refusal Mechanism: A Mechanistic Interpretability Study},
+@misc{llama31_refusal_analysis,
+  title={Mechanistic Analysis of Refusal Behavior in Llama-3.1-8B-Instruct},
   author={Your Name},
-  year={2024},
+  year={2025},
   publisher={GitHub},
   url={https://github.com/weissv/abstract}
 }
@@ -327,6 +197,52 @@ If you use this work, please cite:
 
 ---
 
-**Status**: 🚧 Active Research (November 2024)
+## 📄 License
 
-For questions: Open an issue or contact via GitHub
+This project is licensed under the MIT License.
+
+**Note:** Llama-3.1 model usage is subject to Meta's [License Agreement](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B-Instruct).
+
+---
+
+## ⚠️ Ethical Considerations
+
+This research aims to improve AI safety by understanding refusal mechanisms. Please use responsibly:
+
+- ✅ **DO**: Use for safety research and interpretability studies
+- ✅ **DO**: Share findings to improve AI alignment
+- ❌ **DON'T**: Use to bypass safety measures in production systems
+- ❌ **DON'T**: Apply findings to harm users or violate policies
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Q: "CUDA out of memory" error**
+- A: Enable 4-bit quantization in `config.yaml`
+
+**Q: "HuggingFace token invalid"**
+- A: Ensure you've accepted Llama-3.1 license and token has read permissions
+
+**Q: "Model download slow"**
+- A: First run downloads ~15GB model. Subsequent runs use cached version
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit changes
+4. Push to branch
+5. Open a Pull Request
+
+---
+
+**⭐ If you find this useful, please star the repo!**
+
+Built with ❤️ for the AI safety community

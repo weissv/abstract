@@ -31,9 +31,10 @@ def load_prompts(prompts_file: str = "data/prompts.json"):
 def run_baseline_experiment(config_path: str = "config.yaml"):
     """Run baseline characterization experiment."""
     
-    print("="*80)
+    print("\n" + "="*80)
     print("EXPERIMENT 1: BASELINE CHARACTERIZATION")
-    print("="*80)
+    print("Llama-3.1-8B Refusal Mechanism Analysis")
+    print("="*80 + "\n")
     
     # Load config
     with open(config_path, 'r') as f:
@@ -43,7 +44,7 @@ def run_baseline_experiment(config_path: str = "config.yaml"):
     print("\n[1/4] Loading model...")
     model, tokenizer = load_model_and_tokenizer(
         model_id=config['model']['name'],
-        hf_token=config['model']['hf_token'],
+        hf_token=None,  # Will prompt user for token
         use_4bit=config['quantization']['load_in_4bit']
     )
     

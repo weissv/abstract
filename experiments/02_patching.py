@@ -65,7 +65,7 @@ def run_patching_experiment(config_path: str = "config.yaml"):
     print("\n[1/5] Loading model...")
     model, tokenizer = load_model_and_tokenizer(
         model_id=config['model']['name'],
-        hf_token=config['model']['hf_token'],
+        hf_token=None,  # Will prompt user
         use_4bit=config['quantization']['load_in_4bit']
     )
     print_memory_stats("Current memory: ")

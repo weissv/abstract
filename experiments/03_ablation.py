@@ -33,10 +33,10 @@ def run_ablation_experiment(config_path: str = "config.yaml"):
         config = yaml.safe_load(f)
     
     # Load model
-    print("\n[1/4] Loading model...")
+    print("\n[1/5] Loading model...")
     model, tokenizer = load_model_and_tokenizer(
         model_id=config['model']['name'],
-        hf_token=config['model']['hf_token'],
+        hf_token=None,  # Will prompt user
         use_4bit=config['quantization']['load_in_4bit']
     )
     print_memory_stats("Current memory: ")

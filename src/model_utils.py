@@ -1,6 +1,6 @@
 """
-Model loading utilities for Llama-3-8B with TransformerLens integration.
-Optimized for Apple Silicon M2 with 4-bit quantization.
+Model loading utilities for Llama-3.1-8B-Instruct.
+Optimized for Google Colab with NVIDIA T4 GPU and 4-bit quantization.
 """
 
 import torch
@@ -15,16 +15,15 @@ try:
 except ImportError:
     HookedTransformer = None
     TRANSFORMERLENS_AVAILABLE = False
-    print("Warning: TransformerLens not available. Using HuggingFace transformers only.")
 import gc
 
 
 def get_device() -> torch.device:
     """Gets the best available device for PyTorch."""
-    if torch.backends.mps.is_available():
-        return torch.device("mps")
-    elif torch.cuda.is_available():
+    if torch.cuda.is_available():
         return torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        return torch.device("mps")
     return torch.device("cpu")
 
 
@@ -35,34 +34,38 @@ def load_config(config_path: str = "config.yaml") -> Dict[str, Any]:
 
 
 def get_memory_stats() -> Dict[str, float]:
-    """Get current memory usage statistics."""
-    if torch.backends.mps.is_available():
-        # MPS doesn't have built-in memory tracking like CUDA
-        # We'll use system-level memory info
+    """Get current GPU/memory usage statistics."""
+    if torch.cuda.is_available():
+        return {
+            "allocated_gb": torch.cuda.memory_allocated() / 1024**3,
+            "reserved_gb": torch.cuda.memory_reserved() / 1024**3,
+            "free_gb": (torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated()) / 1024**3
+        }
+    elif torch.backends.mps.is_available():
         import psutil
         process = psutil.Process()
         mem_info = process.memory_info()
         return {
             "allocated_gb": mem_info.rss / 1024**3,
-            "reserved_gb": mem_info.vms / 1024**3
+            "reserved_gb": mem_info.vms / 1024**3,
+            "free_gb": 0
         }
-    elif torch.cuda.is_available():
-        return {
-            "allocated_gb": torch.cuda.memory_allocated() / 1024**3,
-            "reserved_gb": torch.cuda.memory_reserved() / 1024**3
-        }
-    return {"allocated_gb": 0, "reserved_gb": 0}
+    return {"allocated_gb": 0, "reserved_gb": 0, "free_gb": 0}
 
 
 def print_memory_stats(prefix: str = ""):
     """Print current memory usage."""
     stats = get_memory_stats()
-    print(f"{prefix}Memory - Allocated: {stats['allocated_gb']:.2f}GB, "
-          f"Reserved: {stats['reserved_gb']:.2f}GB")
+    if torch.cuda.is_available():
+        print(f"{prefix}GPU Memory - Allocated: {stats['allocated_gb']:.2f}GB, "
+              f"Reserved: {stats['reserved_gb']:.2f}GB, Free: {stats['free_gb']:.2f}GB")
+    else:
+        print(f"{prefix}Memory - Allocated: {stats['allocated_gb']:.2f}GB, "
+              f"Reserved: {stats['reserved_gb']:.2f}GB")
 
 
 def clear_memory():
-    """Clear GPU/MPS memory cache."""
+    """Clear GPU memory cache."""
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -70,35 +73,76 @@ def clear_memory():
         torch.mps.empty_cache()
 
 
+def get_hf_token() -> str:
+    """
+    Get HuggingFace token from user input or environment variable.
+    
+    Returns:
+        HuggingFace API token
+    """
+    # Try environment variable first
+    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_TOKEN")
+    
+    if token:
+        print("✓ Using HuggingFace token from environment variable")
+        return token
+    
+    # Ask user for token
+    print("\n" + "="*60)
+    print("HuggingFace Token Required")
+    print("="*60)
+    print("This model requires authentication with HuggingFace.")
+    print("Get your token at: https://huggingface.co/settings/tokens")
+    print("="*60)
+    token = input("Enter your HuggingFace token: ").strip()
+    
+    if not token:
+        raise ValueError("HuggingFace token is required to access Llama-3.1 models")
+    
+    return token
+
+
 def load_model_and_tokenizer(
-    model_id: str = "meta-llama/Meta-Llama-3-8B-Instruct",
+    model_id: str = "meta-llama/Meta-Llama-3.1-8B-Instruct",
     hf_token: Optional[str] = None,
     use_4bit: bool = True,
     device: Optional[str] = None
 ) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
     """
-    Load Llama-3-8B model and tokenizer with 4-bit quantization.
+    Load Llama-3.1-8B model and tokenizer with optional 4-bit quantization.
     
     Args:
         model_id: HuggingFace model identifier
-        hf_token: HuggingFace API token for gated models
-        use_4bit: Whether to use 4-bit quantization
+        hf_token: HuggingFace API token (if None, will prompt user)
+        use_4bit: Whether to use 4-bit quantization (recommended for T4)
         device: Device to use (auto-detected if None)
     
     Returns:
         Tuple of (model, tokenizer)
     """
     device_obj = get_device() if device is None else torch.device(device)
-    print(f"Using device: {device_obj}")
+    print(f"\n{'='*60}")
+    print(f"Loading Model: {model_id}")
+    print(f"{'='*60}")
+    print(f"Device: {device_obj}")
+    
+    if torch.cuda.is_available():
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
+        print(f"VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f}GB")
+    
     print_memory_stats("Before loading: ")
     
-    # Login to HuggingFace if token provided
-    if hf_token:
-        from huggingface_hub import login
-        login(token=hf_token)
-        print("Logged in to HuggingFace")
+    # Get HuggingFace token
+    if hf_token is None:
+        hf_token = get_hf_token()
+    
+    # Login to HuggingFace
+    from huggingface_hub import login
+    login(token=hf_token)
+    print("✓ Logged in to HuggingFace")
     
     # Configure quantization
+    # Configure quantization for T4 GPU
     quantization_config = None
     if use_4bit:
         quantization_config = BitsAndBytesConfig(
@@ -107,35 +151,46 @@ def load_model_and_tokenizer(
             bnb_4bit_quant_type="nf4",
             bnb_4bit_use_double_quant=True,
         )
-        print("Using 4-bit quantization with NF4")
+        print("✓ Using 4-bit NF4 quantization (optimized for T4 GPU)")
     
     # Load model
-    print(f"Loading model: {model_id}")
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        quantization_config=quantization_config,
-        device_map="auto",
-        torch_dtype=torch.float16 if not use_4bit else None,
-        trust_remote_code=True,
-        low_cpu_mem_usage=True,
-    )
+    print(f"\nLoading model weights...")
+    try:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            quantization_config=quantization_config,
+            device_map="auto",
+            torch_dtype=torch.float16 if not use_4bit else None,
+            trust_remote_code=True,
+            low_cpu_mem_usage=True,
+        )
+        print("✓ Model loaded successfully")
+    except Exception as e:
+        print(f"\n✗ Error loading model: {e}")
+        raise
     
     # Load tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+    print("Loading tokenizer...")
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_id, 
+        trust_remote_code=True,
+        token=hf_token
+    )
     
     # Set pad token
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
     
-    print("Model and tokenizer loaded successfully")
-    print_memory_stats("After loading: ")
+    print("✓ Tokenizer loaded successfully")
+    print_memory_stats("\nAfter loading: ")
+    print(f"{'='*60}\n")
     
     return model, tokenizer
 
 
 def load_hooked_transformer(
-    model_id: str = "meta-llama/Meta-Llama-3-8B-Instruct",
+    model_id: str = "meta-llama/Meta-Llama-3.1-8B-Instruct",
     hf_token: Optional[str] = None,
     use_4bit: bool = True,
     device: Optional[str] = None

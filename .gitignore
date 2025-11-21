@@ -1,12 +1,8 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -20,81 +16,65 @@ parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Virtual environment
+# Virtual Environment
 venv/
 env/
-.venv/
-.env/
+ENV/
+.venv
 
-# IDE / Editor specific
-.idea/
+# IDEs
 .vscode/
+.idea/
 *.swp
+*.swo
 *~
 .DS_Store
 
-# macOS specific
-.AppleDouble
-.LSOverride
-.Trashes
-.fseventsd
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
 
-# Model cache
-.huggingface/
-.cache/huggingface/
+# Outputs (generated during experiments)
+outputs/
+*.log
+*.cache
 
-# Streamlit
-.streamlit/
+# Model Cache
+models/
+.cache/
+huggingface/
+
+# Results (keep structure, ignore content)
+!outputs/.gitkeep
+!outputs/results/.gitkeep
+!outputs/figures/.gitkeep
+!outputs/cache/.gitkeep
+
+# Temporary Files
+*.tmp
+*.bak
+*.swp
+.env
+
+# Large Files
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.h5
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Old Files
+*_OLD.*
+EXECUTION_LOG.md
+FINAL_STATUS.md
+IMPLEMENTATION_SUMMARY.md
+QUICKSTART.md
+RESEARCH_PLAN.md

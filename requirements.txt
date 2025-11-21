@@ -1,30 +1,32 @@
-# Core ML/Interpretability
-# Note: Ensure you have a version of PyTorch compatible with your Apple Silicon (MPS).
-# Installation instructions: https://pytorch.org/get-started/locally/
+# Core Dependencies for Google Colab / CUDA
 torch>=2.0.0
-transformer-lens>=1.14.0
 transformers>=4.36.0
 accelerate>=0.25.0
 bitsandbytes>=0.41.0
-einops>=0.7.0
-scipy>=1.11.0
-jaxtyping>=0.2.0
+
+# HuggingFace
+huggingface-hub>=0.19.0
 safetensors>=0.4.0
+sentencepiece>=0.1.99
+protobuf>=3.20.0
+
+# Data Processing
+numpy>=1.24.0,<2.0.0
+pandas>=2.0.0
+datasets>=2.14.0
 
 # Visualization
-plotly>=5.18.0
-streamlit>=1.29.0
-circuitsvis>=1.43.0
-matplotlib>=3.8.0
-seaborn>=0.13.0
-pandas>=2.1.0
+plotly>=5.17.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
 
 # Utilities
-huggingface_hub>=0.19.0
-tqdm>=4.66.0
-numpy>=1.24.0
-datasets>=2.16.0
-
-# Jupyter for notebooks
+pyyaml>=6.0
+tqdm>=4.65.0
 jupyter>=1.0.0
-ipywidgets>=8.1.0
+ipywidgets>=8.0.0
+
+# Optional (for advanced interpretability)
+# transformer-lens>=1.14.0
+# circuitsvis>=1.43.0
+# einops>=0.7.0
