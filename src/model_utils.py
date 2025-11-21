@@ -9,7 +9,13 @@ import os
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Any
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-from transformer_lens import HookedTransformer
+try:
+    from transformer_lens import HookedTransformer
+    TRANSFORMERLENS_AVAILABLE = True
+except ImportError:
+    HookedTransformer = None
+    TRANSFORMERLENS_AVAILABLE = False
+    print("Warning: TransformerLens not available. Using HuggingFace transformers only.")
 import gc
 
 
@@ -154,26 +160,30 @@ def load_hooked_transformer(
         device=device
     )
     
-    print("Wrapping model with TransformerLens HookedTransformer...")
-    
-    try:
-        # Try to wrap with HookedTransformer
-        hooked_model = HookedTransformer.from_pretrained(
-            model_id,
-            hf_model=base_model,
-            device=str(get_device()),
-            fold_ln=False,
-            center_writing_weights=False,
-            center_unembed=False,
-            tokenizer=tokenizer,
-        )
-        print("Successfully wrapped with HookedTransformer")
-        
-    except Exception as e:
-        print(f"Warning: Could not wrap with HookedTransformer: {e}")
-        print("Falling back to manual hook registration")
-        # Return base model if TransformerLens fails
+    if not TRANSFORMERLENS_AVAILABLE:
+        print("TransformerLens not available, returning base model")
         hooked_model = base_model
+    else:
+        print("Wrapping model with TransformerLens HookedTransformer...")
+        
+        try:
+            # Try to wrap with HookedTransformer
+            hooked_model = HookedTransformer.from_pretrained(
+                model_id,
+                hf_model=base_model,
+                device=str(get_device()),
+                fold_ln=False,
+                center_writing_weights=False,
+                center_unembed=False,
+                tokenizer=tokenizer,
+            )
+            print("Successfully wrapped with HookedTransformer")
+            
+        except Exception as e:
+            print(f"Warning: Could not wrap with HookedTransformer: {e}")
+            print("Falling back to manual hook registration")
+            # Return base model if TransformerLens fails
+            hooked_model = base_model
     
     print_memory_stats("After wrapping: ")
     return hooked_model, tokenizer

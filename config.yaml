@@ -4,14 +4,14 @@
 model:
   name: "meta-llama/Meta-Llama-3-8B-Instruct"
   hf_token: "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"
-  quantization: "4bit"  # Options: "4bit", "8bit", "fp16", "fp32"
+  quantization: "fp16"  # Options: "4bit", "8bit", "fp16", "fp32"
   device: "mps"  # Options: "mps", "cuda", "cpu"
   max_length: 512
   trust_remote_code: true
 
 # Quantization Settings
 quantization:
-  load_in_4bit: true
+  load_in_4bit: false
   bnb_4bit_compute_dtype: "float16"
   bnb_4bit_quant_type: "nf4"
   bnb_4bit_use_double_quant: true
