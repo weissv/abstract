@@ -351,8 +351,10 @@ def print_model_info(model: AutoModelForCausalLM):
     for key, value in info.items():
         if isinstance(value, float):
             print(f"{key:.<40} {value:.2f}")
+        elif isinstance(value, (int, bool)):
+            print(f"{key:.<40} {value:,}" if isinstance(value, int) else f"{key:.<40} {value}")
         else:
-            print(f"{key:.<40} {value:,}")
+            print(f"{key:.<40} {value}")
     print("="*60 + "\n")
 
 
