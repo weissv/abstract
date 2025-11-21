@@ -1,0 +1,66 @@
+# Configuration for Llama-3 Refusal Mechanism Research
+
+# Model Configuration
+model:
+  name: "meta-llama/Meta-Llama-3-8B-Instruct"
+  hf_token: "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"
+  quantization: "4bit"  # Options: "4bit", "8bit", "fp16", "fp32"
+  device: "mps"  # Options: "mps", "cuda", "cpu"
+  max_length: 512
+  trust_remote_code: true
+
+# Quantization Settings
+quantization:
+  load_in_4bit: true
+  bnb_4bit_compute_dtype: "float16"
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_use_double_quant: true
+
+# Experiment Configuration
+experiment:
+  batch_size: 1
+  num_prompt_pairs: 15
+  seed: 42
+  max_new_tokens: 100
+  temperature: 0.7
+  top_p: 0.9
+
+# Interpretability Settings
+interpretability:
+  num_layers: 32  # Llama-3-8B has 32 layers
+  num_heads: 32   # Each layer has 32 attention heads
+  hidden_size: 4096
+  intermediate_size: 14336  # MLP intermediate dimension
+  
+  # Patching Configuration
+  patching:
+    components: ["attn", "mlp", "resid"]  # Components to patch
+    metrics: ["kl_divergence", "logit_diff", "prob_diff"]
+    
+  # Ablation Configuration
+  ablation:
+    top_k_heads: 20
+    top_k_neurons: 100
+    ablation_types: ["zero", "mean"]  # zero out or replace with mean
+
+# Visualization Settings
+visualization:
+  attention_heatmap: true
+  activation_plots: true
+  circuit_diagrams: true
+  save_format: ["html", "png", "pdf"]
+  interactive: true
+
+# Paths
+paths:
+  data_dir: "data"
+  results_dir: "outputs/results"
+  cache_dir: "outputs/cache"
+  figures_dir: "outputs/figures"
+  models_dir: "outputs/models"
+
+# Prompts Configuration
+prompts:
+  harmful_keywords: ["bomb", "hack", "kill", "steal", "illegal", "drug", "weapon"]
+  refusal_tokens: ["I cannot", "I can't", "I'm sorry", "I apologize", "I'm not able"]
+  compliance_tokens: ["Here's", "Sure", "Here is", "I'll help", "To build"]

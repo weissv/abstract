@@ -1,0 +1,30 @@
+# Core ML/Interpretability
+# Note: Ensure you have a version of PyTorch compatible with your Apple Silicon (MPS).
+# Installation instructions: https://pytorch.org/get-started/locally/
+torch>=2.0.0
+transformer-lens>=1.14.0
+transformers>=4.36.0
+accelerate>=0.25.0
+bitsandbytes>=0.41.0
+einops>=0.7.0
+scipy>=1.11.0
+jaxtyping>=0.2.0
+safetensors>=0.4.0
+
+# Visualization
+plotly>=5.18.0
+streamlit>=1.29.0
+circuitsvis>=1.43.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+pandas>=2.1.0
+
+# Utilities
+huggingface_hub>=0.19.0
+tqdm>=4.66.0
+numpy>=1.24.0
+datasets>=2.16.0
+
+# Jupyter for notebooks
+jupyter>=1.0.0
+ipywidgets>=8.1.0
