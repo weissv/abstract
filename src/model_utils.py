@@ -75,7 +75,7 @@ def clear_memory():
 
 def get_hf_token() -> str:
     """
-    Get HuggingFace token from user input or environment variable.
+    Get HuggingFace token from environment, Colab secrets, or user input.
     
     Returns:
         HuggingFace API token
@@ -87,12 +87,29 @@ def get_hf_token() -> str:
         print("✓ Using HuggingFace token from environment variable")
         return token
     
-    # Ask user for token
+    # Try Google Colab userdata
+    try:
+        from google.colab import userdata
+        token = userdata.get('HF_TOKEN')
+        if token:
+            print("✓ Using HuggingFace token from Colab secrets")
+            return token
+    except ImportError:
+        pass  # Not in Colab environment
+    except Exception as e:
+        print(f"⚠️ Could not access Colab secrets: {e}")
+    
+    # Ask user for token as fallback
     print("\n" + "="*60)
     print("HuggingFace Token Required")
     print("="*60)
     print("This model requires authentication with HuggingFace.")
     print("Get your token at: https://huggingface.co/settings/tokens")
+    print("="*60)
+    print("\nIn Google Colab, save your token as a secret:")
+    print("1. Click the key icon (🔑) in the left sidebar")
+    print("2. Add a new secret named 'HF_TOKEN'")
+    print("3. Paste your token and enable 'Notebook access'")
     print("="*60)
     token = input("Enter your HuggingFace token: ").strip()
     
@@ -138,8 +155,12 @@ def load_model_and_tokenizer(
     
     # Login to HuggingFace
     from huggingface_hub import login
-    login(token=hf_token)
-    print("✓ Logged in to HuggingFace")
+    try:
+        login(token=hf_token)
+        print("✓ Logged in to HuggingFace")
+    except Exception as e:
+        print(f"⚠️ Login warning: {e}")
+        print("Attempting to proceed without explicit login...")
     
     # Configure quantization
     # Configure quantization for T4 GPU
