@@ -45,8 +45,15 @@ def run_ablation_experiment(config_path: str = "config.yaml"):
     print("\n[2/4] Loading identified causal components...")
     try:
         patching_results = load_patching_results()
-        causal_components = patching_results['combined_analysis']['ranked_components']
-        print(f"Found {len(causal_components)} ranked components")
+        raw_components = patching_results['combined_analysis']['ranked_components']
+        
+        # 🔥 ФИЛЬТР: Убираем residual stream из кандидатов на удаление
+        causal_components = [
+            c for c in raw_components 
+            if c['component'] in ['mlp', 'attention'] # Оставляем только нейроны и внимание
+        ]
+        
+        print(f"Found {len(raw_components)} components, filtered down to {len(causal_components)} (removed residuals)")
     except FileNotFoundError:
         print("Warning: Patching results not found. Using default components.")
         # Default to middle and late layers
