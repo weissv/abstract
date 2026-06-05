@@ -5,20 +5,19 @@ Identifies refusal circuits using precise logit difference measurements.
 """
 
 import sys
+import argparse
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import json
 import yaml
 import numpy as np
-from model_utils import load_model_and_tokenizer, print_memory_stats
-from advanced_patching import (
+from llama_refusal.model_utils import load_model_and_tokenizer, print_memory_stats
+from llama_refusal.patching import (
     comprehensive_layer_scan,
     analyze_patching_results_advanced,
     compare_ransomware_vs_malware
 )
-from colab_visualization import (
+from llama_refusal.colab_visualization import (
     create_comprehensive_dashboard,
     display_in_colab,
     create_summary_table
@@ -51,7 +50,13 @@ def select_test_pairs(baseline_results, num_pairs: int = 5):
     return selected
 
 
-def run_patching_experiment(config_path: str = "config.yaml"):
+def parse_args():
+    parser = argparse.ArgumentParser(description="Activation Patching Experiment")
+    parser.add_argument("--config", type=str, default="config.yaml", help="Path to config file")
+    parser.add_argument("--baseline-results", type=str, default="outputs/results/01_baseline_results.json", help="Path to baseline results")
+    return parser.parse_args()
+
+def run_patching_experiment(args):
     """
     Run comprehensive activation patching experiment with logit-based metrics.
     Scans ALL 32 layers and optionally individual attention heads.
@@ -63,7 +68,7 @@ def run_patching_experiment(config_path: str = "config.yaml"):
     print("="*80)
     
     # Load config
-    with open(config_path, 'r') as f:
+    with open(args.config, 'r') as f:
         config = yaml.safe_load(f)
     
     # Load model
@@ -78,7 +83,7 @@ def run_patching_experiment(config_path: str = "config.yaml"):
     # Load baseline results
     print("\n[2/6] Loading baseline results...")
     try:
-        baseline = load_baseline_results()
+        baseline = load_baseline_results(args.baseline_results)
         test_pairs = select_test_pairs(baseline, num_pairs=3)
         print(f"Selected {len(test_pairs)} prompt pairs for testing")
     except FileNotFoundError:
@@ -307,8 +312,9 @@ def run_patching_experiment(config_path: str = "config.yaml"):
 
 
 if __name__ == '__main__':
+    args = parse_args()
     try:
-        results, analysis = run_patching_experiment()
+        results, analysis = run_patching_experiment(args)
         print("\n" + "="*80)
         print("✓ PATCHING EXPERIMENT COMPLETED SUCCESSFULLY")
         print("="*80)

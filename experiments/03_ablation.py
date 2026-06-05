@@ -4,14 +4,13 @@ Test necessity of identified refusal components.
 """
 
 import sys
+import argparse
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import json
 import yaml
-from model_utils import load_model_and_tokenizer, print_memory_stats
-from ablation import systematic_ablation_study, analyze_ablation_results
+from llama_refusal.model_utils import load_model_and_tokenizer, print_memory_stats
+from llama_refusal.ablation import systematic_ablation_study, analyze_ablation_results
 import plotly.graph_objects as go
 
 
@@ -21,7 +20,13 @@ def load_patching_results(results_path: str = "outputs/results/02_patching_resul
         return json.load(f)
 
 
-def run_ablation_experiment(config_path: str = "config.yaml"):
+def parse_args():
+    parser = argparse.ArgumentParser(description="Ablation Study Experiment")
+    parser.add_argument("--config", type=str, default="config.yaml", help="Path to config file")
+    parser.add_argument("--patching-results", type=str, default="outputs/results/02_patching_combined.json", help="Path to patching results")
+    return parser.parse_args()
+
+def run_ablation_experiment(args):
     """Run ablation study."""
     
     print("="*80)
@@ -29,7 +34,7 @@ def run_ablation_experiment(config_path: str = "config.yaml"):
     print("="*80)
     
     # Load config
-    with open(config_path, 'r') as f:
+    with open(args.config, 'r') as f:
         config = yaml.safe_load(f)
     
     # Load model
@@ -44,7 +49,7 @@ def run_ablation_experiment(config_path: str = "config.yaml"):
     # Load patching results
     print("\n[2/4] Loading identified causal components...")
     try:
-        patching_results = load_patching_results()
+        patching_results = load_patching_results(args.patching_results)
         raw_components = patching_results['combined_analysis']['ranked_components']
         
         # 🔥 ФИЛЬТР: Убираем residual stream из кандидатов на удаление
@@ -184,8 +189,9 @@ def run_ablation_experiment(config_path: str = "config.yaml"):
 
 
 if __name__ == '__main__':
+    args = parse_args()
     try:
-        results, analysis = run_ablation_experiment()
+        results, analysis = run_ablation_experiment(args)
         print("\n" + "="*80)
         print("✓ ABLATION STUDY COMPLETED SUCCESSFULLY")
         print("="*80)

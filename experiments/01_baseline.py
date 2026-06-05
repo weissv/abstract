@@ -4,56 +4,60 @@ Test model behavior on harmful and harmless prompts.
 """
 
 import sys
-from pathlib import Path
-
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
+import argparse
 import json
 import yaml
-from model_utils import (
-    load_model_and_tokenizer,
-    generate_text,
-    print_model_info,
-    print_memory_stats
-)
-from patching import is_refusal
+from pathlib import Path
 from tqdm import tqdm
 
+from llama_refusal.model_utils import (
+    load_model_and_tokenizer,
+    generate_text,
+    log_model_info,
+    log_memory_stats
+)
+# is_refusal is in patching.py but actually it's just a simple text check.
+# We'll import it from llama_refusal.patching
+from llama_refusal.patching import is_refusal
 
-def load_prompts(prompts_file: str = "data/prompts.json"):
+
+def load_prompts(prompts_file: str):
     """Load contrastive prompts from JSON."""
     with open(prompts_file, 'r') as f:
         data = json.load(f)
     return data['prompt_pairs']
 
 
-def run_baseline_experiment(config_path: str = "config.yaml"):
-    """Run baseline characterization experiment."""
-    
+def parse_args():
+    parser = argparse.ArgumentParser(description="Baseline Characterization")
+    parser.add_argument("--config", type=str, default="config.yaml", help="Path to config file")
+    parser.add_argument("--prompts", type=str, default="data/prompts.json", help="Path to prompts file")
+    parser.add_argument("--output-dir", type=str, default="outputs/results", help="Output directory")
+    return parser.parse_args()
+
+
+def run_baseline_experiment(args):
     print("\n" + "="*80)
     print("EXPERIMENT 1: BASELINE CHARACTERIZATION")
     print("Llama-3.1-8B Refusal Mechanism Analysis")
     print("="*80 + "\n")
     
     # Load config
-    with open(config_path, 'r') as f:
+    with open(args.config, 'r') as f:
         config = yaml.safe_load(f)
     
-    # Load model
     print("\n[1/4] Loading model...")
     model, tokenizer = load_model_and_tokenizer(
         model_id=config['model']['name'],
-        hf_token=None,  # Will prompt user for token
+        hf_token=None, 
         use_4bit=config['quantization']['load_in_4bit']
     )
     
-    print_model_info(model)
-    print_memory_stats("\nCurrent memory usage: ")
+    log_model_info(model)
+    log_memory_stats("\nCurrent memory usage: ")
     
-    # Load prompts
     print("\n[2/4] Loading prompts...")
-    prompt_pairs = load_prompts()
+    prompt_pairs = load_prompts(args.prompts)
     print(f"Loaded {len(prompt_pairs)} contrastive prompt pairs")
     
     # Test on harmful prompts
@@ -80,7 +84,6 @@ def run_baseline_experiment(config_path: str = "config.yaml"):
         }
         harmful_results.append(result)
         
-        # Print sample
         if pair['id'] <= 3:
             print(f"\n--- Prompt {pair['id']} ({pair['category']}) ---")
             print(f"Prompt: {prompt}")
@@ -111,14 +114,12 @@ def run_baseline_experiment(config_path: str = "config.yaml"):
         }
         harmless_results.append(result)
         
-        # Print sample
         if pair['id'] <= 3:
             print(f"\n--- Prompt {pair['id']} ({pair['category']}) ---")
             print(f"Prompt: {prompt}")
             print(f"Output: {output[:200]}...")
             print(f"Refusal: {result['is_refusal']}")
     
-    # Analyze results
     print("\n" + "="*80)
     print("RESULTS ANALYSIS")
     print("="*80)
@@ -138,7 +139,6 @@ def run_baseline_experiment(config_path: str = "config.yaml"):
     print(f"  Refused: {sum(r['is_refusal'] for r in harmless_results)}")
     print(f"  Complied: {sum(not r['is_refusal'] for r in harmless_results)}")
     
-    # Category breakdown
     print(f"\nRefusal by Category (Harmful Prompts):")
     categories = {}
     for r in harmful_results:
@@ -153,8 +153,7 @@ def run_baseline_experiment(config_path: str = "config.yaml"):
         rate = stats['refused'] / stats['total'] * 100
         print(f"  {cat:.<25} {rate:>5.1f}% ({stats['refused']}/{stats['total']})")
     
-    # Save results
-    output_dir = Path(config['paths']['results_dir'])
+    output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     
     results = {
@@ -173,14 +172,15 @@ def run_baseline_experiment(config_path: str = "config.yaml"):
         json.dump(results, f, indent=2)
     
     print(f"\n✓ Results saved to: {results_path}")
-    print_memory_stats("\nFinal memory usage: ")
+    log_memory_stats("\nFinal memory usage: ")
     
     return results
 
 
 if __name__ == '__main__':
+    args = parse_args()
     try:
-        results = run_baseline_experiment()
+        results = run_baseline_experiment(args)
         print("\n" + "="*80)
         print("✓ BASELINE EXPERIMENT COMPLETED SUCCESSFULLY")
         print("="*80)

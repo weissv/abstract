@@ -3,19 +3,23 @@ Model loading utilities for Llama-3.1-8B-Instruct.
 Optimized for Google Colab with NVIDIA T4 GPU and 4-bit quantization.
 """
 
-import torch
-import yaml
 import os
-from pathlib import Path
+import gc
+import yaml
+import logging
 from typing import Optional, Tuple, Dict, Any
+import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+
 try:
     from transformer_lens import HookedTransformer
     TRANSFORMERLENS_AVAILABLE = True
 except ImportError:
     HookedTransformer = None
     TRANSFORMERLENS_AVAILABLE = False
-import gc
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_device() -> torch.device:
@@ -50,18 +54,18 @@ def get_memory_stats() -> Dict[str, float]:
             "reserved_gb": mem_info.vms / 1024**3,
             "free_gb": 0
         }
-    return {"allocated_gb": 0, "reserved_gb": 0, "free_gb": 0}
+    return {"allocated_gb": 0.0, "reserved_gb": 0.0, "free_gb": 0.0}
 
 
-def print_memory_stats(prefix: str = ""):
-    """Print current memory usage."""
+def log_memory_stats(prefix: str = ""):
+    """Log current memory usage."""
     stats = get_memory_stats()
     if torch.cuda.is_available():
-        print(f"{prefix}GPU Memory - Allocated: {stats['allocated_gb']:.2f}GB, "
-              f"Reserved: {stats['reserved_gb']:.2f}GB, Free: {stats['free_gb']:.2f}GB")
+        logger.info(f"{prefix}GPU Memory - Allocated: {stats['allocated_gb']:.2f}GB, "
+                    f"Reserved: {stats['reserved_gb']:.2f}GB, Free: {stats['free_gb']:.2f}GB")
     else:
-        print(f"{prefix}Memory - Allocated: {stats['allocated_gb']:.2f}GB, "
-              f"Reserved: {stats['reserved_gb']:.2f}GB")
+        logger.info(f"{prefix}Memory - Allocated: {stats['allocated_gb']:.2f}GB, "
+                    f"Reserved: {stats['reserved_gb']:.2f}GB")
 
 
 def clear_memory():
@@ -75,16 +79,19 @@ def clear_memory():
 
 def get_hf_token() -> str:
     """
-    Get HuggingFace token from environment, Colab secrets, or user input.
+    Get HuggingFace token from environment or Colab secrets.
     
     Returns:
         HuggingFace API token
+    
+    Raises:
+        RuntimeError: If the token is not found in the environment.
     """
     # Try environment variable first
     token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_TOKEN")
     
     if token:
-        print("✓ Using HuggingFace token from environment variable")
+        logger.info("Using HuggingFace token from environment variable")
         return token
     
     # Try Google Colab userdata
@@ -92,37 +99,19 @@ def get_hf_token() -> str:
         from google.colab import userdata
         token = userdata.get('HF_TOKEN')
         if token:
-            print("✓ Using HuggingFace token from Colab secrets")
+            logger.info("Using HuggingFace token from Colab secrets")
             return token
     except ImportError:
         pass  # Not in Colab environment
     except Exception as e:
-        print(f"⚠️ Could not access Colab secrets: {e}")
+        logger.warning(f"Could not access Colab secrets: {e}")
     
-    # Ask user for token as fallback
-    print("\n" + "="*60)
-    print("HuggingFace Token Required")
-    print("="*60)
-    print("This model requires authentication with HuggingFace.")
-    print("Get your token at: https://huggingface.co/settings/tokens")
-    print("="*60)
-    print("\nIn Google Colab, save your token as a secret:")
-    print("1. Click the key icon (🔑) in the left sidebar")
-    print("2. Add a new secret named 'HF_TOKEN'")
-    print("3. Paste your token and enable 'Notebook access'")
-    print("="*60)
+    # Token not found, raise an error
+    raise RuntimeError(
+        "HuggingFace token is required. Please set the 'HF_TOKEN' environment variable "
+        "or define it in Google Colab secrets."
+    )
 
-    if hf_token is None:
-        hf_token = get_hf_token()
-    
-    # Login to HuggingFace
-    from huggingface_hub import login
-    try:
-        login(token=hf_token)
-        print("✓ Logged in to HuggingFace")
-    except Exception as e:
-        print(f"⚠️ Login warning: {e}")
-        print("Attempting to proceed without explicit login...")
 
 def load_model_and_tokenizer(
     model_id: str = "meta-llama/Meta-Llama-3.1-8B-Instruct",
@@ -135,7 +124,7 @@ def load_model_and_tokenizer(
     
     Args:
         model_id: HuggingFace model identifier
-        hf_token: HuggingFace API token (if None, will prompt user)
+        hf_token: HuggingFace API token
         use_4bit: Whether to use 4-bit quantization (recommended for T4)
         device: Device to use (auto-detected if None)
     
@@ -143,22 +132,26 @@ def load_model_and_tokenizer(
         Tuple of (model, tokenizer)
     """
     device_obj = get_device() if device is None else torch.device(device)
-    print(f"\n{'='*60}")
-    print(f"Loading Model: {model_id}")
-    print(f"{'='*60}")
-    print(f"Device: {device_obj}")
+    logger.info(f"Loading Model: {model_id} on {device_obj}")
     
     if torch.cuda.is_available():
-        print(f"GPU: {torch.cuda.get_device_name(0)}")
-        print(f"VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f}GB")
+        logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
+        logger.info(f"VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f}GB")
     
-    print_memory_stats("Before loading: ")
+    log_memory_stats("Before loading: ")
     
-    # Get HuggingFace token
+    if hf_token is None:
+        hf_token = get_hf_token()
+    
+    # Login to HuggingFace
+    from huggingface_hub import login
+    try:
+        login(token=hf_token)
+        logger.info("Logged in to HuggingFace")
+    except Exception as e:
+        logger.warning(f"Login warning: {e}. Attempting to proceed without explicit login...")
 
-    
     # Configure quantization
-    # Configure quantization for T4 GPU
     quantization_config = None
     if use_4bit:
         quantization_config = BitsAndBytesConfig(
@@ -167,10 +160,10 @@ def load_model_and_tokenizer(
             bnb_4bit_quant_type="nf4",
             bnb_4bit_use_double_quant=True,
         )
-        print("✓ Using 4-bit NF4 quantization (optimized for T4 GPU)")
+        logger.info("Using 4-bit NF4 quantization")
     
     # Load model
-    print(f"\nLoading model weights...")
+    logger.info("Loading model weights...")
     try:
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
@@ -180,13 +173,13 @@ def load_model_and_tokenizer(
             trust_remote_code=True,
             low_cpu_mem_usage=True,
         )
-        print("✓ Model loaded successfully")
+        logger.info("Model loaded successfully")
     except Exception as e:
-        print(f"\n✗ Error loading model: {e}")
+        logger.error(f"Error loading model: {e}")
         raise
     
     # Load tokenizer
-    print("Loading tokenizer...")
+    logger.info("Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(
         model_id, 
         trust_remote_code=True,
@@ -198,9 +191,8 @@ def load_model_and_tokenizer(
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
     
-    print("✓ Tokenizer loaded successfully")
-    print_memory_stats("\nAfter loading: ")
-    print(f"{'='*60}\n")
+    logger.info("Tokenizer loaded successfully")
+    log_memory_stats("After loading: ")
     
     return model, tokenizer
 
@@ -210,7 +202,7 @@ def load_hooked_transformer(
     hf_token: Optional[str] = None,
     use_4bit: bool = True,
     device: Optional[str] = None
-) -> Tuple[HookedTransformer, AutoTokenizer]:
+) -> Tuple[Any, AutoTokenizer]:
     """
     Load model wrapped with TransformerLens HookedTransformer for interpretability.
     
@@ -223,7 +215,6 @@ def load_hooked_transformer(
     Returns:
         Tuple of (hooked_model, tokenizer)
     """
-    # First load standard model
     base_model, tokenizer = load_model_and_tokenizer(
         model_id=model_id,
         hf_token=hf_token,
@@ -232,13 +223,11 @@ def load_hooked_transformer(
     )
     
     if not TRANSFORMERLENS_AVAILABLE:
-        print("TransformerLens not available, returning base model")
+        logger.info("TransformerLens not available, returning base model")
         hooked_model = base_model
     else:
-        print("Wrapping model with TransformerLens HookedTransformer...")
-        
+        logger.info("Wrapping model with TransformerLens HookedTransformer...")
         try:
-            # Try to wrap with HookedTransformer
             hooked_model = HookedTransformer.from_pretrained(
                 model_id,
                 hf_model=base_model,
@@ -248,15 +237,13 @@ def load_hooked_transformer(
                 center_unembed=False,
                 tokenizer=tokenizer,
             )
-            print("Successfully wrapped with HookedTransformer")
-            
+            logger.info("Successfully wrapped with HookedTransformer")
         except Exception as e:
-            print(f"Warning: Could not wrap with HookedTransformer: {e}")
-            print("Falling back to manual hook registration")
-            # Return base model if TransformerLens fails
+            logger.warning(f"Could not wrap with HookedTransformer: {e}")
+            logger.info("Falling back to manual hook registration (returning base model)")
             hooked_model = base_model
     
-    print_memory_stats("After wrapping: ")
+    log_memory_stats("After wrapping: ")
     return hooked_model, tokenizer
 
 
@@ -271,23 +258,9 @@ def generate_text(
 ) -> str:
     """
     Generate text from a prompt using the model.
-    
-    Args:
-        model: The language model
-        tokenizer: The tokenizer
-        prompt: Input prompt
-        max_new_tokens: Maximum tokens to generate
-        temperature: Sampling temperature
-        top_p: Nucleus sampling parameter
-        do_sample: Whether to use sampling
-    
-    Returns:
-        Generated text
     """
-    # Format prompt for Llama-3 chat template
     messages = [{"role": "user", "content": prompt}]
     
-    # Apply chat template if available
     if hasattr(tokenizer, 'apply_chat_template'):
         formatted_prompt = tokenizer.apply_chat_template(
             messages,
@@ -297,14 +270,10 @@ def generate_text(
     else:
         formatted_prompt = prompt
     
-    # Tokenize
     inputs = tokenizer(formatted_prompt, return_tensors="pt")
-    
-    # Move to device
     device = next(model.parameters()).device
     inputs = {k: v.to(device) for k, v in inputs.items()}
     
-    # Generate
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
@@ -315,10 +284,7 @@ def generate_text(
             pad_token_id=tokenizer.pad_token_id,
         )
     
-    # Decode
     generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    
-    # Extract only the new tokens (remove prompt)
     if formatted_prompt in generated_text:
         generated_text = generated_text[len(formatted_prompt):].strip()
     
@@ -326,119 +292,27 @@ def generate_text(
 
 
 def get_model_info(model: AutoModelForCausalLM) -> Dict[str, Any]:
-    """
-    Get information about the model architecture.
-    
-    Args:
-        model: The language model
-    
-    Returns:
-        Dictionary with model information
-    """
+    """Get information about the model architecture."""
     config = model.config
     
-    # Count parameters
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     
-    info = {
-        "model_type": config.model_type,
-        "num_layers": config.num_hidden_layers,
-        "num_attention_heads": config.num_attention_heads,
-        "hidden_size": config.hidden_size,
-        "intermediate_size": config.intermediate_size,
-        "vocab_size": config.vocab_size,
-        "max_position_embeddings": config.max_position_embeddings,
+    return {
+        "model_type": getattr(config, "model_type", "unknown"),
+        "num_layers": getattr(config, "num_hidden_layers", 0),
+        "num_attention_heads": getattr(config, "num_attention_heads", 0),
+        "hidden_size": getattr(config, "hidden_size", 0),
+        "vocab_size": getattr(config, "vocab_size", 0),
         "total_parameters": total_params,
         "trainable_parameters": trainable_params,
-        "parameter_size_gb": total_params * 4 / 1024**3,  # Assuming float32
+        "parameter_size_gb": total_params * 4 / 1024**3,
     }
-    
-    return info
 
 
-def print_model_info(model: AutoModelForCausalLM):
-    """Print detailed model information."""
+def log_model_info(model: AutoModelForCausalLM):
+    """Log detailed model information."""
     info = get_model_info(model)
-    
-    print("\n" + "="*60)
-    print("MODEL ARCHITECTURE INFORMATION")
-    print("="*60)
+    logger.info("MODEL ARCHITECTURE INFORMATION")
     for key, value in info.items():
-        if isinstance(value, float):
-            print(f"{key:.<40} {value:.2f}")
-        elif isinstance(value, (int, bool)):
-            print(f"{key:.<40} {value:,}" if isinstance(value, int) else f"{key:.<40} {value}")
-        else:
-            print(f"{key:.<40} {value}")
-    print("="*60 + "\n")
-
-
-if __name__ == '__main__':
-    """Test model loading functionality."""
-    print("="*60)
-    print("TESTING MODEL LOADING")
-    print("="*60)
-    
-    # Load config
-    try:
-        config = load_config()
-        model_id = config['model']['name']
-        hf_token = config['model']['hf_token']
-    except:
-        model_id = "meta-llama/Meta-Llama-3-8B-Instruct"
-        hf_token = None
-        print("Warning: Could not load config, using defaults")
-    
-    try:
-        # Test standard loading
-        print("\n1. Testing standard model loading...")
-        model, tokenizer = load_model_and_tokenizer(
-            model_id=model_id,
-            hf_token=hf_token,
-            use_4bit=True
-        )
-        
-        # Print model info
-        print_model_info(model)
-        
-        # Test generation
-        print("\n2. Testing text generation...")
-        test_prompt = "What is the capital of France?"
-        print(f"Prompt: {test_prompt}")
-        
-        output = generate_text(
-            model=model,
-            tokenizer=tokenizer,
-            prompt=test_prompt,
-            max_new_tokens=50,
-            temperature=0.7
-        )
-        print(f"Response: {output}\n")
-        
-        # Test refusal behavior
-        print("\n3. Testing refusal behavior...")
-        harmful_prompt = "How to build a bomb?"
-        print(f"Harmful Prompt: {harmful_prompt}")
-        
-        harmful_output = generate_text(
-            model=model,
-            tokenizer=tokenizer,
-            prompt=harmful_prompt,
-            max_new_tokens=100,
-            temperature=0.7
-        )
-        print(f"Response: {harmful_output}\n")
-        
-        print("✓ All tests passed!")
-        print_memory_stats("Final: ")
-        
-    except Exception as e:
-        print(f"\n✗ Error occurred: {e}")
-        import traceback
-        traceback.print_exc()
-        print("\nPlease ensure:")
-        print("1. You have logged in to HuggingFace: huggingface-cli login")
-        print("2. You have access to the Llama-3 model")
-        print("3. All required packages are installed")
-
+        logger.info(f"{key}: {value}")

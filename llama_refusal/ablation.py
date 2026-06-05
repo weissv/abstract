@@ -197,8 +197,8 @@ def test_ablation_effect(
     Returns:
         Dictionary with results
     """
-    from model_utils import generate_text
-    from patching import is_refusal
+    from .model_utils import generate_text
+    from .patching import is_refusal
     
     results = {
         'ablated_components': ablation_manager.get_ablated_components(),
@@ -262,8 +262,8 @@ def systematic_ablation_study(
     Returns:
         Ablation study results
     """
-    from model_utils import generate_text
-    from patching import is_refusal
+    from .model_utils import generate_text
+    from .patching import is_refusal
     
     # 1. Get baseline outputs (no ablation)
     print("Getting baseline outputs...")

@@ -49,8 +49,9 @@ cd abstract
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\\Scripts\\activate
 
-# Install dependencies
+# Install dependencies and local package
 pip install -r requirements.txt
+pip install -e .
 
 # Set HuggingFace token
 export HF_TOKEN="your_token_here"
@@ -73,11 +74,14 @@ python experiments/03_ablation.py
 ```
 abstract/
 ├── llama_refusal_analysis.ipynb  # Main Colab notebook
-├── src/
+├── llama_refusal/               # Core Python package
+│   ├── __init__.py
 │   ├── model_utils.py           # Model loading & utilities
-│   ├── patching.py              # Activation patching implementation
+│   ├── patching.py              # Activation patching & advanced scans
 │   ├── ablation.py              # Ablation study tools
-│   └── visualization.py         # Plotting and dashboards
+│   ├── metrics.py               # Logit-based precise metrics
+│   ├── visualization.py         # Plotting and dashboards
+│   └── colab_visualization.py   # Colab integration tools
 ├── experiments/
 │   ├── 01_baseline.py           # Baseline characterization
 │   ├── 02_patching.py           # Activation patching experiments

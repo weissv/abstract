@@ -40,11 +40,4 @@ setup(
             "transformer-lens>=1.0.0",
         ],
     },
-    entry_points={
-        "console_scripts": [
-            "llama-refusal-baseline=experiments.01_baseline:main",
-            "llama-refusal-patching=experiments.02_patching:main",
-            "llama-refusal-ablation=experiments.03_ablation:main",
-        ],
-    },
 )
